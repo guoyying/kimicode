@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>反馈话术生成器 - GitHub 同步版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+        .main-wrapper {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .sync-status {
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        .sync-status .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .status-synced {
+            background: #10b981;
+        }
+        .status-unsaved {
+            background: #f59e0b;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 25px;
+        }
+        @media (max-width: 1100px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .card-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .question {
+            margin-bottom: 18px;
+        }
+        .question-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 8px;
+        }
+        .options {
+            display: flex;
+            gap: 15px;
+        }
+        .option {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        .option:hover {
+            background-color: #f0f0f0;
+        }
+        .option input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+            cursor: pointer;
+        }
+        .option span {
+            font-size: 13px;
+            color: #555;
+        }
+        .input-group {
+            margin-top: 15px;
+            display: none;
+        }
+        .input-group.show {
+            display: block;
+        }
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #e74c3c;
+            margin-bottom: 5px;
+        }
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 13px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        .input-group textarea {
+            resize: vertical;
+            min-height: 55px;
+        }
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            width: 100%;
+            padding: 11px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+        .btn-secondary:hover {
+            box-shadow: 0 8px 20px rgba(108, 117, 125, 0.4);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            margin-top: 10px;
+        }
+        .btn-success:hover {
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            margin-top: 18px;
+            padding: 14px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result-title {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        .result-content {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.6;
+            word-break: break-all;
+        }
+        .next-step-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #ddd;
+        }
+        .section-subtitle {
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .quick-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .quick-option-btn {
+            padding: 6px 12px;
+            background: #f0f4ff;
+            border: 1px solid #667eea;
+            color: #667eea;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-option-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .sync-controls {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .sync-controls h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .sync-input {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .sync-input input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .sync-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .sync-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .sync-btns button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-pull {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-pull:hover {
+            background: #2563eb;
+        }
+        .btn-push {
+            background: #10b981;
+            color: white;
+        }
+        .btn-push:hover {
+            background: #059669;
+        }
+        .sync-info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 8px;
+        }
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 10px;
+            min-width: 85px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+        .table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th {
+            background: #f8f9fa;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: top;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        tr.unsaved {
+            background: #fffbeb;
+            border-left: 3px solid #f59e0b;
+        }
+        .network-name-cell {
+            font-weight: 600;
+            color: #333;
+            max-width: 100px;
+            word-break: break-all;
+        }
+        .days-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .days-normal {
+            background: #d4edda;
+            color: #155724;
+        }
+        .days-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .days-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .checkbox-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .checkbox-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 14px;
+            height: 14px;
+        }
+        .checkbox-item.checked {
+            color: #28a745;
+        }
+        .progress-bar {
+            width: 70px;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        .progress-text {
+            font-size: 10px;
+            color: #666;
+            margin-top: 3px;
+        }
+        .next-step-cell {
+            max-width: 140px;
+        }
+        .next-step-display {
+            font-size: 11px;
+            color: #667eea;
+            background: #f0f4ff;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+        .next-step-display.empty {
+            color: #999;
+            background: #f8f9fa;
+            border-left-color: #ccc;
+        }
+        .action-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 11px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+        .btn-small:hover {
+            opacity: 0.8;
+        }
+        .btn-copy {
+            background: #667eea;
+            color: white;
+        }
+        .btn-edit {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .custom-requirement-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed #ddd;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-processing {
+            background: #cce5ff;
+            color: #004085;
+        }
+        .badge-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+        }
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            font-family: inherit;
+        }
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .modal-btn-cancel {
+            background: #e0e0e0;
+            color: #555;
+        }
+        .modal-btn-save {
+            background: #667eea;
+            color: white;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .toast.success {
+            background: #10b981;
+        }
+        .toast.error {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <h1>📋 反馈话术生成器 - GitHub 同步版</h1>
+        <div class="sync-status">
+            本地记录: <span id="local-count">0</span> 条
+            <span class="status-badge status-synced" id="sync-badge">已同步</span>
+        </div>
+        
+        <div class="content-grid">
+            <div class="left-panel">
+                <div class="card">
+                    <div class="card-title">📝 生成反馈话术</div>
+                    
+                    <div class="question">
+                        <div class="question-title">1、是否有附件？</div>
+                        <div class="options">
+                            <label class="option">
+                                <input type="radio" name="q1" value="yes" id="q1-yes">
+                                <span>是</span>
+                            </label>
+                            <label class="option">
+                                <input type="radio" name="q1" value="no" id="q1-no">
+                                <span>否</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="question">
+                        <div class="question-title">2、上联光路是否拆除？</div>
+                        <div class="options">
+                            <label class="option">
+                                <input type="radio" name="q2" value="yes" id="q2-yes">
+                                <span>是</span>
+                            </label>
+                            <label class="option">
+                                <input type="radio" name="q2" value="no" id="q2-no">
+                                <span>否</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group" id="network-name-group">
+                        <label for="network-name">⛔ 网管名称 *</label>
+                        <input type="text" id="network-name" placeholder="请输入网管名称">
+                    </div>
+
+                    <div class="input-group" id="custom-requirement-group">
+                        <div class="custom-requirement-section">
+                            <div class="section-subtitle">📌 个性化要求（可选）</div>
+                            <div id="attachment-requirement" style="display:none; margin-bottom:10px;">
+                                <label style="font-size:12px; color:#555; margin-bottom:4px; display:block;">附件要求</label>
+                                <textarea id="attachment-detail" placeholder="填写附件的具体要求"></textarea>
+                            </div>
+                            <div id="removal-requirement" style="display:none;">
+                                <label style="font-size:12px; color:#555; margin-bottom:4px; display:block;">拆除要求</label>
+                                <textarea id="removal-detail" placeholder="填写光路拆除的具体要求"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group" id="next-step-group">
+                        <div class="next-step-section">
+                            <div class="section-subtitle">🎯 下一步要做</div>
+                            <div class="quick-options">
+                                <button class="quick-option-btn" onclick="setNextStep('网监评估过单')">网监评估过单</button>
+                                <button class="quick-option-btn" onclick="setNextStep('等待客户回复')">等待客户回复</button>
+                                <button class="quick-option-btn" onclick="setNextStep('联系施工方确认')">联系施工方确认</button>
+                                <button class="quick-option-btn" onclick="focusCustomNextStep()">✏️ 自定义</button>
+                            </div>
+                            <textarea id="next-step-input" placeholder="点击上方选项或在此处输入下一步要做的事"></textarea>
+                        </div>
+                    </div>
+
+                    <button class="btn" onclick="generateResult()">生成反馈话术</button>
+                    <button class="btn btn-secondary" onclick="addToRecord()">添加到进度表</button>
+
+                    <div class="result" id="result">
+                        <div class="result-title">反馈话术：</div>
+                        <div class="result-content" id="result-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="card">
+                    <div class="card-title">
+                        📊 进度记录表
+                        <span style="font-size:12px; color:#888; font-weight:normal;">（数据保存在本地，需手动同步）</span>
+                    </div>
+                    
+                    <!-- 同步控制面板 -->
+                    <div class="sync-controls">
+                        <h3>🔄 GitHub 同步设置</h3>
+                        <div class="sync-input">
+                            <input type="text" id="github-token" placeholder="GitHub Personal Access Token" value="">
+                        </div>
+                        <div class="sync-input">
+                            <input type="text" id="github-owner" placeholder="仓库所有者 (用户名)" value="">
+                            <input type="text" id="github-repo" placeholder="仓库名" value="">
+                        </div>
+                        <div class="sync-btns">
+                            <button class="btn-pull" onclick="pullFromGitHub()">⬇️ 从GitHub拉取</button>
+                            <button class="btn-push" onclick="pushToGitHub()">⬆️ 同步到GitHub</button>
+                        </div>
+                        <div class="sync-info">
+                            💡 提示：首次使用需创建 <a href="https://github.com/settings/tokens" target="_blank">Personal Access Token</a>（勾选 repo 权限）
+                        </div>
+                    </div>
+                    
+                    <div class="stats-bar">
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-total">0</div>
+                            <div class="stat-label">总任务</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-pending">0</div>
+                            <div class="stat-label">待处理</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-processing">0</div>
+                            <div class="stat-label">处理中</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-completed">0</div>
+                            <div class="stat-label">已完成</div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="record-table">
+                            <thead>
+                                <tr>
+                                    <th>网管名称</th>
+                                    <th>创建时间</th>
+                                    <th>已超期</th>
+                                    <th>处理进度</th>
+                                    <th>下一步</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="record-tbody">
+                            </tbody>
+                        </table>
+                        <div class="empty-state" id="empty-state" style="display:none;">
+                            <div class="empty-state-icon">📭</div>
+                            <div>暂无记录</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-content">
+            <div class="modal-title">编辑下一步</div>
+            <textarea class="modal-input" id="modal-next-step" rows="3"></textarea>
+            <div class="quick-options" style="margin-bottom:15px;">
+                <button class="quick-option-btn" onclick="setModalNextStep('网监评估过单')">网监评估过单</button>
+                <button class="quick-option-btn" onclick="setModalNextStep('等待客户回复')">等待客户回复</button>
+                <button class="quick-option-btn" onclick="setModalNextStep('联系施工方确认')">联系施工方确认</button>
+            </div>
+            <div class="modal-btns">
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">取消</button>
+                <button class="modal-btn modal-btn-save" onclick="saveModal()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ==================== 数据管理 ====================
+        let records = [];
+        let editingId = null;
+        let hasUnsavedChanges = false;
+        const ISSUE_TITLE = '【数据同步】反馈话术记录清单';
+        const ISSUE_LABEL = 'data-sync';
+
+        // 从本地存储加载
+        function loadFromLocal() {
+            const saved = localStorage.getItem('networkRecords_v2');
+            if (saved) {
+                records = JSON.parse(saved);
+                // 恢复 GitHub 配置
+                const config = JSON.parse(localStorage.getItem('githubConfig') || '{}');
+                document.getElementById('github-token').value = config.token || '';
+                document.getElementById('github-owner').value = config.owner || '';
+                document.getElementById('github-repo').value = config.repo || '';
+            }
+            renderRecords();
+            updateSyncStatus();
+        }
+
+        // 保存到本地存储
+        function saveToLocal() {
+            localStorage.setItem('networkRecords_v2', JSON.stringify(records));
+            // 保存 GitHub 配置
+            const config = {
+                token: document.getElementById('github-token').value,
+                owner: document.getElementById('github-owner').value,
+                repo: document.getElementById('github-repo').value
+            };
+            localStorage.setItem('githubConfig', JSON.stringify(config));
+            hasUnsavedChanges = true;
+            updateSyncStatus();
+            showToast('已保存到本地', 'success');
+        }
+
+        // 更新同步状态显示
+        function updateSyncStatus() {
+            document.getElementById('local-count').textContent = records.length;
+            const badge = document.getElementById('sync-badge');
+            if (hasUnsavedChanges) {
+                badge.textContent = '有未同步更改';
+                badge.className = 'status-badge status-unsaved';
+            } else {
+                badge.textContent = '已同步';
+                badge.className = 'status-badge status-synced';
+            }
+        }
+
+        // ==================== GitHub API ====================
+        function getGitHubConfig() {
+            return {
+                token: document.getElementById('github-token').value.trim(),
+                owner: document.getElementById('github-owner').value.trim(),
+                repo: document.getElementById('github-repo').value.trim()
+            };
+        }
+
+        // 从 GitHub 拉取数据
+        async function pullFromGitHub() {
+            const { token, owner, repo } = getGitHubConfig();
+            if (!token || !owner || !repo) {
+                showToast('请填写完整的 GitHub 配置信息', 'error');
+                return;
+            }
+
+            showToast('正在从 GitHub 拉取数据...', 'success');
+
+            try {
+                // 1. 查找数据同步 Issue
+                const searchRes = await fetch(
+                    `https://api.github.com/repos/${owner}/${repo}/issues?labels=${ISSUE_LABEL}&state=open`,
+                    { headers: { 'Authorization': `token ${token}` } }
+                );
+                
+                if (!searchRes.ok) throw new Error('无法访问仓库，请检查配置');
+                
+                const issues = await searchRes.json();
+                let dataIssue = issues.find(i => i.title === ISSUE_TITLE);
+
+                if (!dataIssue) {
+                    showToast('GitHub 上没有找到数据，将创建新数据', 'success');
+                    return;
+                }
+
+                // 2. 获取 Issue 内容
+                const content = dataIssue.body;
+                const match = content.match(/```json\n([\s\S]*?)\n```/);
+                
+                if (match) {
+                    const remoteRecords = JSON.parse(match[1]);
+                    // 合并数据：本地有更新优先使用本地，否则使用远程
+                    records = mergeRecords(records, remoteRecords);
+                    saveToLocal();
+                    renderRecords();
+                    hasUnsavedChanges = false;
+                    updateSyncStatus();
+                    showToast(`成功拉取 ${remoteRecords.length} 条记录`, 'success');
+                } else {
+                    throw new Error('数据格式错误');
+                }
+            } catch (error) {
+                showToast('拉取失败: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // 推送到 GitHub
+        async function pushToGitHub() {
+            const { token, owner, repo } = getGitHubConfig();
+            if (!token || !owner || !repo) {
+                showToast('请填写完整的 GitHub 配置信息', 'error');
+                return;
+            }
+
+            showToast('正在同步到 GitHub...', 'success');
+
+            try {
+                // 1. 查找或创建 Issue
+                const searchRes = await fetch(
+                    `https://api.github.com/repos/${owner}/${repo}/issues?labels=${ISSUE_LABEL}&state=open`,
+                    { headers: { 'Authorization': `token ${token}` } }
+                );
+                const issues = await searchRes.json();
+                let dataIssue = issues.find(i => i.title === ISSUE_TITLE);
+
+                const dataJson = JSON.stringify(records, null, 2);
+                const body = `## 反馈话术记录数据\n\n> 最后更新：${new Date().toLocaleString()}\n> 共 ${records.length} 条记录\n\n\`\`\`json\n${dataJson}\n\`\`\`\n\n---\n*此 Issue 由反馈话术生成器自动创建和管理*`;
+
+                if (dataIssue) {
+                    // 更新现有 Issue
+                    const updateRes = await fetch(
+                        `https://api.github.com/repos/${owner}/${repo}/issues/${dataIssue.number}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ body })
+                        }
+                    );
+                    if (!updateRes.ok) throw new Error('更新失败');
+                } else {
+                    // 创建新 Issue
+                    const createRes = await fetch(
+                        `https://api.github.com/repos/${owner}/${repo}/issues`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                title: ISSUE_TITLE,
+                                body: body,
+                                labels: [ISSUE_LABEL]
+                            })
+                        }
+                    );
+                    if (!createRes.ok) throw new Error('创建失败');
+                }
+
+                hasUnsavedChanges = false;
+                updateSyncStatus();
+                showToast(`成功同步 ${records.length} 条记录到 GitHub`, 'success');
+            } catch (error) {
+                showToast('同步失败: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // 合并本地和远程记录（以更新时间较新的为准）
+        function mergeRecords(local, remote) {
+            const merged = [...local];
+            const localIds = new Set(local.map(r => r.id));
+            
+            for (const remoteRecord of remote) {
+                const localIndex = merged.findIndex(r => r.id === remoteRecord.id);
+                if (localIndex === -1) {
+                    // 本地没有，添加
+                    merged.push(remoteRecord);
+                } else {
+                    // 两边都有，比较更新时间
+                    const localUpdated = merged[localIndex].updatedAt || merged[localIndex].createdAt;
+                    const remoteUpdated = remoteRecord.updatedAt || remoteRecord.createdAt;
+                    if (remoteUpdated > localUpdated) {
+                        merged[localIndex] = remoteRecord;
+                    }
+                }
+            }
+            
+            // 按创建时间倒序
+            return merged.sort((a, b) => b.createdAt - a.createdAt);
+        }
+
+        // ==================== 业务逻辑 ====================
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', checkNeedInput);
+        });
+
+        function checkNeedInput() {
+            const q1No = document.getElementById('q1-no').checked;
+            const q2No = document.getElementById('q2-no').checked;
+            
+            const networkGroup = document.getElementById('network-name-group');
+            const customGroup = document.getElementById('custom-requirement-group');
+            const nextStepGroup = document.getElementById('next-step-group');
+
+            if (q1No || q2No) {
+                networkGroup.classList.add('show');
+                customGroup.classList.add('show');
+                nextStepGroup.classList.add('show');
+                document.getElementById('attachment-requirement').style.display = q1No ? 'block' : 'none';
+                document.getElementById('removal-requirement').style.display = q2No ? 'block' : 'none';
+            } else {
+                networkGroup.classList.remove('show');
+                customGroup.classList.remove('show');
+                nextStepGroup.classList.remove('show');
+            }
+        }
+
+        function setNextStep(text) {
+            document.getElementById('next-step-input').value = text;
+        }
+
+        function focusCustomNextStep() {
+            document.getElementById('next-step-input').focus();
+        }
+
+        function generateResult() {
+            const q1Yes = document.getElementById('q1-yes').checked;
+            const q1No = document.getElementById('q1-no').checked;
+            const q2Yes = document.getElementById('q2-yes').checked;
+            const q2No = document.getElementById('q2-no').checked;
+            const networkName = document.getElementById('network-name').value.trim();
+            const attachmentDetail = document.getElementById('attachment-detail').value.trim();
+            const removalDetail = document.getElementById('removal-detail').value.trim();
+            
+            if (!q1Yes && !q1No) { alert('请选择问题1的答案'); return null; }
+            if (!q2Yes && !q2No) { alert('请选择问题2的答案'); return null; }
+            if ((q1No || q2No) && !networkName) { alert('请填写网管名称'); return null; }
+
+            let message = '';
+            let requirements = [];
+
+            if (q1No && q2No) {
+                message = `"${networkName}"请提供附件、上联光路需拆除`;
+                if (attachmentDetail) requirements.push(`附件要求：${attachmentDetail}`);
+                if (removalDetail) requirements.push(`拆除要求：${removalDetail}`);
+            } else if (q1No) {
+                message = `"${networkName}"请提供附件`;
+                if (attachmentDetail) requirements.push(`附件要求：${attachmentDetail}`);
+            } else if (q2No) {
+                message = `"${networkName}"上联光路需拆除`;
+                if (removalDetail) requirements.push(`拆除要求：${removalDetail}`);
+            } else {
+                message = '信息完整，无需补充。';
+            }
+
+            if (requirements.length > 0) {
+                message += '，' + requirements.join('，') + '。';
+            } else if (!q1Yes || !q2Yes) {
+                message += '。';
+            }
+
+            document.getElementById('result-content').textContent = message;
+            document.getElementById('result').classList.add('show');
+            return message;
+        }
+
+        function addToRecord() {
+            const message = generateResult();
+            if (!message) return;
+            
+            const networkName = document.getElementById('network-name').value.trim();
+            const q1No = document.getElementById('q1-no').checked;
+            const q2No = document.getElementById('q2-no').checked;
+            const nextStep = document.getElementById('next-step-input').value.trim();
+            
+            if (!networkName) { alert('该情况无需添加到进度表'); return; }
+
+            const record = {
+                id: 'rec_' + Date.now(),
+                networkName: networkName,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                needAttachment: q1No,
+                needRemoval: q2No,
+                message: message,
+                attachmentSubmitted: false,
+                removalCompleted: false,
+                nextStep: nextStep || '',
+                nextStepVisible: true
+            };
+
+            records.unshift(record);
+            saveToLocal();
+            renderRecords();
+            
+            // 重置表单
+            document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+            document.getElementById('network-name').value = '';
+            document.getElementById('attachment-detail').value = '';
+            document.getElementById('removal-detail').value = '';
+            document.getElementById('next-step-input').value = '';
+            document.getElementById('result').classList.remove('show');
+            checkNeedInput();
+        }
+
+        function renderRecords() {
+            const tbody = document.getElementById('record-tbody');
+            const emptyState = document.getElementById('empty-state');
+            const table = document.getElementById('record-table');
+
+            updateStats();
+
+            if (records.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                table.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            table.style.display = 'table';
+
+            tbody.innerHTML = records.map(record => {
+                const days = calculateDays(record.createdAt);
+                const daysClass = days < 3 ? 'days-normal' : days < 7 ? 'days-warning' : 'days-danger';
+                const progress = calculateProgress(record);
+                const status = getStatus(record);
+                const isUnsaved = hasUnsavedChanges && record.updatedAt > (record.lastSynced || 0);
+                
+                let showNextStep = false;
+                if (record.nextStep && record.nextStepVisible) {
+                    if (progress === 0 && record.nextStep) showNextStep = true;
+                    else if ((record.needAttachment && record.attachmentSubmitted) || 
+                             (record.needRemoval && record.removalCompleted)) showNextStep = true;
+                    else if (progress === 100) showNextStep = true;
+                }
+                
+                return `
+                    <tr data-id="${record.id}" class="${isUnsaved ? 'unsaved' : ''}">
+                        <td class="network-name-cell">${escapeHtml(record.networkName)}</td>
+                        <td>${formatDate(record.createdAt)}</td>
+                        <td><span class="days-tag ${daysClass}">${days}天</span></td>
+                        <td>
+                            <div class="checkbox-wrapper">
+                                ${record.needAttachment ? `
+                                <label class="checkbox-item ${record.attachmentSubmitted ? 'checked' : ''}">
+                                    <input type="checkbox" ${record.attachmentSubmitted ? 'checked' : ''} 
+                                        onchange="toggleAttachment('${record.id}')">
+                                    <span>附件已提交</span>
+                                </label>` : ''}
+                                ${record.needRemoval ? `
+                                <label class="checkbox-item ${record.removalCompleted ? 'checked' : ''}">
+                                    <input type="checkbox" ${record.removalCompleted ? 'checked' : ''} 
+                                        onchange="toggleRemoval('${record.id}')">
+                                    <span>光路已拆除</span>
+                                </label>` : ''}
+                            </div>
+                            <div class="progress-bar" style="margin-top:6px;">
+                                <div class="progress-fill" style="width:${progress}%"></div>
+                            </div>
+                            <div class="progress-text">${progress}%</div>
+                        </td>
+                        <td class="next-step-cell">
+                            ${showNextStep ? `
+                                <div class="next-step-display">${escapeHtml(record.nextStep)}</div>
+                            ` : '<div class="next-step-display empty">-</div>'}
+                        </td>
+                        <td><span class="badge badge-${status.class}">${status.text}</span></td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn-small btn-copy" onclick="copyMessage('${record.id}')">复制话术</button>
+                                <button class="btn-small btn-edit" onclick="editNextStep('${record.id}')">编辑下一步</button>
+                                <button class="btn-small btn-delete" onclick="deleteRecord('${record.id}')">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function calculateDays(timestamp) {
+            return Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
+        }
+
+        function calculateProgress(record) {
+            let total = 0, completed = 0;
+            if (record.needAttachment) { total++; if (record.attachmentSubmitted) completed++; }
+            if (record.needRemoval) { total++; if (record.removalCompleted) completed++; }
+            return total === 0 ? 100 : Math.round((completed / total) * 100);
+        }
+
+        function getStatus(record) {
+            const progress = calculateProgress(record);
+            if (progress === 0) return { class: 'pending', text: '待处理' };
+            if (progress === 100) return { class: 'completed', text: '已完成' };
+            return { class: 'processing', text: '处理中' };
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function updateStats() {
+            const total = records.length;
+            const pending = records.filter(r => calculateProgress(r) === 0).length;
+            const completed = records.filter(r => calculateProgress(r) === 100).length;
+            const processing = total - pending - completed;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-processing').textContent = processing;
+            document.getElementById('stat-completed').textContent = completed;
+        }
+
+        function toggleAttachment(id) {
+            const record = records.find(r => r.id === id);
+            if (record) {
+                record.attachmentSubmitted = !record.attachmentSubmitted;
+                record.updatedAt = Date.now();
+                saveToLocal();
+                renderRecords();
+            }
+        }
+
+        function toggleRemoval(id) {
+            const record = records.find(r => r.id === id);
+            if (record) {
+                record.removalCompleted = !record.removalCompleted;
+                record.updatedAt = Date.now();
+                saveToLocal();
+                renderRecords();
+            }
+        }
+
+        function editNextStep(id) {
+            const record = records.find(r => r.id === id);
+            if (record) {
+                editingId = id;
+                document.getElementById('modal-next-step').value = record.nextStep || '';
+                document.getElementById('edit-modal').classList.add('show');
+            }
+        }
+
+        function setModalNextStep(text) {
+            document.getElementById('modal-next-step').value = text;
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').classList.remove('show');
+            editingId = null;
+        }
+
+        function saveModal() {
+            if (editingId) {
+                const record = records.find(r => r.id === editingId);
+                if (record) {
+                    record.nextStep = document.getElementById('modal-next-step').value.trim();
+                    record.updatedAt = Date.now();
+                    saveToLocal();
+                    renderRecords();
+                }
+            }
+            closeModal();
+        }
+
+        function copyMessage(id) {
+            const record = records.find(r => r.id === id);
+            if (record) {
+                navigator.clipboard.writeText(record.message).then(() => {
+                    showToast('话术已复制到剪贴板！', 'success');
+                });
+            }
+        }
+
+        function deleteRecord(id) {
+            if (confirm('确定要删除这条记录吗？')) {
+                records = records.filter(r => r.id !== id);
+                saveToLocal();
+                renderRecords();
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ==================== 关闭页面提醒 ====================
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '您有未同步到 GitHub 的更改，确定要离开吗？';
+                return e.returnValue;
+            }
+        });
+
+        document.getElementById('edit-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // 初始化
+        loadFromLocal();
+    </script>
+</body>
+</html>
